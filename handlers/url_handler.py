@@ -54,7 +54,16 @@ async def handle_url(update, context):
 
     url = extract_url(text)
     if not url:
-        return  # Нет ссылки в сообщении — игнорируем
+        return
+
+    # Instagram блокирует серверные IP по rate-limit — предупредить заранее
+    if "instagram.com" in url.lower():
+        await message.reply_text(
+            "⚠️ Instagram Reels не поддерживается.\n\n"
+            "Instagram блокирует серверы по IP. "
+            "Скачай видео вручную и отправь как файл — обработаю его."
+        )
+        return
 
     status_msg = await message.reply_text("🔗 Получаю информацию о видео...")
 
@@ -63,27 +72,26 @@ async def handle_url(update, context):
 
     # Настройки yt-dlp
     ydl_opts = {
-        # Скачать только аудио (не видео) — экономит время и место
         "format": "bestaudio/best",
-
-        # Конвертировать в WAV через ffmpeg (оптимально для Whisper)
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
             "preferredquality": "192",
         }],
-
-        # Путь сохранения файла
         "outtmpl": output_template,
-
-        # Тихий режим — не выводить прогресс в консоль
         "quiet": True,
         "no_warnings": True,
-
-        # Ограничение размера: не скачивать файлы больше 100MB
         "max_filesize": 100 * 1024 * 1024,
 
-        # Заголовки браузера — TikTok и Instagram блокируют запросы без них
+        # Использовать Android/iOS клиент для YouTube — работает без авторизации.
+        # YouTube не блокирует мобильные клиенты так агрессивно как веб.
+        "extractor_args": {
+            "youtube": {
+                # android_vr и ios дают доступ к большинству публичных видео без куки
+                "player_client": ["android_vr", "ios", "web"],
+            },
+        },
+
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -91,8 +99,6 @@ async def handle_url(update, context):
                 "Chrome/120.0.0.0 Safari/537.36"
             ),
             "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Referer": "https://www.tiktok.com/",
         },
     }
 
@@ -143,16 +149,32 @@ async def handle_url(update, context):
 
         # Определяем понятную причину
         low = raw.lower()
+        is_instagram = "instagram.com" in url.lower()
+
         if "private" in low:
-            reason = "Приватное видео."
+            reason = "Приватное видео — доступно только подписчикам."
         elif "login" in low or "sign in" in low:
-            reason = "Требуется вход в аккаунт."
+            if is_instagram:
+                reason = (
+                    "Instagram требует авторизацию для скачивания Reels.\n\n"
+                    "К сожалению, это ограничение Instagram — "
+                    "публичные Reels тоже требуют вход.\n\n"
+                    "Попробуй скачать видео вручную и отправить его как файл."
+                )
+            else:
+                reason = "Это видео требует входа в аккаунт."
         elif "copyright" in low:
             reason = "Заблокировано по авторским правам."
+        elif "not available in your country" in low or "not available in your region" in low:
+            reason = (
+                "Это видео заблокировано для страны сервера (США/Европа).\n\n"
+                "Попробуй другое видео без гео-блокировки, "
+                "или скачай видео вручную и отправь файлом."
+            )
         elif "not available" in low or "unavailable" in low:
             reason = "Видео удалено или недоступно."
         else:
-            reason = f"Детали: {raw[-200:]}"  # последние 200 символов реальной ошибки
+            reason = f"Детали: {raw[-300:]}"
 
         await status_msg.edit_text(f"❌ Не удалось скачать.\n\n{reason}")
 
