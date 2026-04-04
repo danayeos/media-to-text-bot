@@ -72,7 +72,7 @@ async def handle_url(update, context):
 
     # Настройки yt-dlp
     ydl_opts = {
-        "format": "bestaudio/best",
+        "format": "bestaudio/ba/b/best",
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
