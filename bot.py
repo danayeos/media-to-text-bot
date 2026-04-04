@@ -49,13 +49,14 @@ logger = logging.getLogger(__name__)
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/start — Welcome message shown when user first opens the bot."""
     text = (
-        "👋 *Welcome to Media-to-Text Bot!*\n\n"
-        "I can convert media files into readable text:\n\n"
-        "🎵 *Audio* → Send an audio file or voice message\n"
-        "🎬 *Video* → Send a video file\n"
-        "🖼️ *Image* → Send a photo with text\n\n"
-        "Just send me any file and I'll do the rest!\n\n"
-        "Use /help for more details."
+        "👋 *Добро пожаловать в Media-to-Text Bot!*\n\n"
+        "Я конвертирую медиафайлы и ссылки в текст:\n\n"
+        "🎵 *Аудио* → Отправь аудиофайл или голосовое сообщение\n"
+        "🎬 *Видео* → Отправь видеофайл\n"
+        "🖼️ *Фото* → Отправь фото с текстом\n"
+        "🔗 *Ссылка* → Вставь ссылку на TikTok, Instagram и др.\n\n"
+        "Просто отправь файл или ссылку — я сделаю остальное!\n\n"
+        "Используй /help для подробностей."
     )
     await update.message.reply_text(text, parse_mode="Markdown")
 
