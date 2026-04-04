@@ -91,78 +91,68 @@ async def handle_url(update, context):
             ),
             "Accept-Language": "en-US,en;q=0.9",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Referer": "https://www.tiktok.com/",
         },
-
-        # Попытаться имитировать браузер Chrome (помогает с TikTok)
-        "impersonate": "chrome120",
     }
 
     try:
         await status_msg.edit_text("⏳ Скачиваю аудио со ссылки...")
 
-        # Запустить загрузку
+        title = "видео"
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Сначала получить информацию о видео (без скачивания)
-            info = ydl.extract_info(url, download=False)
-            title = info.get("title", "видео")
-            duration = info.get("duration", 0)
+            # Получить инфо и скачать за один раз
+            # extract_info с download=True делает всё сразу
+            info = ydl.extract_info(url, download=True)
+            if info:
+                title = info.get("title", "видео")
+                duration = info.get("duration", 0)
+                if duration and duration > 10800:
+                    await status_msg.edit_text(
+                        "⚠️ Видео слишком длинное (больше 3 часов)."
+                    )
+                    return
 
-            # Проверить длительность — Whisper медленно обрабатывает длинные файлы
-            if duration and duration > 10800:  # больше 3 часов
-                await status_msg.edit_text(
-                    "⚠️ Видео слишком длинное (больше 3 часов).\n\n"
-                    "Отправь видео короче 3 часов."
-                )
-                return
-
-            await status_msg.edit_text(f"⏳ Скачиваю: *{title[:50]}*...", parse_mode="Markdown")
-
-            # Скачать файл
-            ydl.download([url])
-
-        # Найти скачанный файл (yt-dlp сам добавляет расширение)
+        # Найти скачанный файл
         audio_path = _find_downloaded_file(output_template)
         if not audio_path:
-            await status_msg.edit_text("❌ Не удалось найти скачанный файл.")
+            await status_msg.edit_text(
+                "❌ Файл скачан, но не найден. Попробуйте ещё раз."
+            )
             return
 
-        # Сохранить путь к файлу для обработки после нажатия кнопки языка
-        context.user_data["pending"] = {
-            "type": "audio",
-            "path": audio_path,
-        }
+        context.user_data["pending"] = {"type": "audio", "path": audio_path}
 
+        # Безопасно экранируем title для Markdown
+        safe_title = title[:60].replace("*", "").replace("_", "").replace("`", "")
         await status_msg.edit_text(
-            f"✅ Скачано: *{title[:60]}*\n\nВыберите язык записи:",
+            f"✅ Скачано: *{safe_title}*\n\nВыберите язык записи:",
             parse_mode="Markdown",
             reply_markup=LANGUAGE_KEYBOARD,
         )
 
     except yt_dlp.utils.DownloadError as e:
-        error_msg = str(e)
-        logger.error(f"yt-dlp download error: {error_msg}")
+        # Показываем реальную ошибку yt-dlp для диагностики
+        raw = str(e)
+        logger.error(f"yt-dlp DownloadError: {raw}")
 
-        if "Private" in error_msg or "private" in error_msg:
-            reason = "Это приватное видео — бот не может его скачать."
-        elif "not available" in error_msg:
-            reason = "Видео недоступно в вашем регионе или удалено."
-        elif "Sign in" in error_msg or "login" in error_msg.lower():
-            reason = "Это видео требует входа в аккаунт (Instagram/TikTok private)."
-        elif "copyright" in error_msg.lower():
-            reason = "Видео заблокировано по авторским правам."
+        # Определяем понятную причину
+        low = raw.lower()
+        if "private" in low:
+            reason = "Приватное видео."
+        elif "login" in low or "sign in" in low:
+            reason = "Требуется вход в аккаунт."
+        elif "copyright" in low:
+            reason = "Заблокировано по авторским правам."
+        elif "not available" in low or "unavailable" in low:
+            reason = "Видео удалено или недоступно."
         else:
-            reason = "Убедитесь что ссылка открывается в браузере."
+            reason = f"Детали: {raw[-200:]}"  # последние 200 символов реальной ошибки
 
-        await status_msg.edit_text(
-            f"❌ Не удалось скачать видео.\n\n{reason}"
-        )
+        await status_msg.edit_text(f"❌ Не удалось скачать.\n\n{reason}")
 
     except Exception as e:
         logger.error(f"URL handler error: {e}", exc_info=True)
-        await status_msg.edit_text(
-            f"❌ Ошибка: {e}\n\n"
-            "Попробуйте другую ссылку."
-        )
+        await status_msg.edit_text(f"❌ Ошибка: {e}")
 
 
 def _find_downloaded_file(output_template: str) -> str | None:
