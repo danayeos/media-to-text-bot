@@ -1,0 +1,17 @@
+# Секретные данные — НИКОГДА не заливать на GitHub
+.env
+
+# Временные файлы бота
+temp_files/
+
+# Python кэш
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Виртуальное окружение
+venv/
+env/
+.venv/

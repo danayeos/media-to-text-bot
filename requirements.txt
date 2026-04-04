@@ -1,0 +1,16 @@
+# ─── Telegram Bot ───────────────────────────────────────────────────────────
+python-telegram-bot==20.7        # Async Telegram Bot API wrapper
+
+# ─── Speech-to-Text (Audio + Video) ──────────────────────────────────────────
+faster-whisper==1.0.3            # Whisper AI — local transcription, no API key
+                                 # Uses CTranslate2 instead of PyTorch (lighter, faster)
+
+# ─── Image OCR ───────────────────────────────────────────────────────────────
+pytesseract==0.3.10              # Python wrapper for Tesseract OCR engine
+Pillow==10.4.0                   # Image processing library (PIL fork)
+
+# ─── Environment Variables ───────────────────────────────────────────────────
+python-dotenv==1.0.0             # Load variables from .env file
+
+# ─── Translation (Bonus Feature) ─────────────────────────────────────────────
+deep-translator==1.11.4          # Free Google Translate (no API key)

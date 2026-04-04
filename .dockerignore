@@ -1,0 +1,10 @@
+# Не копировать эти файлы в Docker-контейнер
+.env
+.env.example
+temp_files/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+*.md
