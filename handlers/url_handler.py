@@ -79,8 +79,22 @@ async def handle_url(update, context):
         "quiet": True,
         "no_warnings": True,
 
-        # Ограничение размера: не скачивать файлы больше 50MB
-        "max_filesize": 50 * 1024 * 1024,
+        # Ограничение размера: не скачивать файлы больше 100MB
+        "max_filesize": 100 * 1024 * 1024,
+
+        # Заголовки браузера — TikTok и Instagram блокируют запросы без них
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+
+        # Попытаться имитировать браузер Chrome (помогает с TikTok)
+        "impersonate": "chrome120",
     }
 
     try:
@@ -94,10 +108,10 @@ async def handle_url(update, context):
             duration = info.get("duration", 0)
 
             # Проверить длительность — Whisper медленно обрабатывает длинные файлы
-            if duration and duration > 3600:  # больше 1 часа
+            if duration and duration > 10800:  # больше 3 часов
                 await status_msg.edit_text(
-                    "⚠️ Видео слишком длинное (больше 1 часа).\n\n"
-                    "Отправь более короткое видео (до 60 минут)."
+                    "⚠️ Видео слишком длинное (больше 3 часов).\n\n"
+                    "Отправь видео короче 3 часов."
                 )
                 return
 

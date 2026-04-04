@@ -71,23 +71,33 @@ def transcribe_audio(audio_path: str, language: str | None = None) -> dict:
     # transcribe() returns:
     #   segments → iterable of text chunks (with timestamps)
     #   info     → metadata including detected language
-    segments, info = _model.transcribe(
-        audio_path,
-        language=language,          # None = auto-detect per segment
-        beam_size=5,                # Higher = more accurate, slower
-        vad_filter=True,            # Skip silent parts (Voice Activity Detection)
-        vad_parameters=dict(
-            min_silence_duration_ms=500  # Ignore silences < 0.5 second
-        ),
-        # word_timestamps improves accuracy for mixed-language audio
-        word_timestamps=False,
-    )
+    try:
+        segments, info = _model.transcribe(
+            audio_path,
+            language=language,          # None = auto-detect per segment
+            beam_size=5,                # Higher = more accurate, slower
+            vad_filter=True,            # Skip silent parts (Voice Activity Detection)
+            vad_parameters=dict(
+                min_silence_duration_ms=500  # Ignore silences < 0.5 second
+            ),
+            word_timestamps=False,
+        )
+        segment_list = list(segments)
+
+    except ValueError:
+        # "max() arg is an empty sequence" — VAD удалил все сегменты (тишина/шум).
+        # Повторяем без VAD фильтра чтобы всё же попробовать распознать.
+        logger.warning("VAD filter removed all segments, retrying without VAD...")
+        segments, info = _model.transcribe(
+            audio_path,
+            language=language,
+            beam_size=5,
+            vad_filter=False,  # отключаем VAD
+            word_timestamps=False,
+        )
+        segment_list = list(segments)
 
     # Join all text chunks into one string.
-    # We consume the generator into a list first — this is important because
-    # faster-whisper returns a lazy iterator that must be fully consumed
-    # before accessing `info.language`.
-    segment_list = list(segments)
     full_text = " ".join(seg.text.strip() for seg in segment_list)
 
     detected_lang = info.language  # e.g. "ru", "en", "kk"

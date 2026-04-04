@@ -19,4 +19,4 @@ deep-translator==1.11.4          # Free Google Translate (no API key)
 groq==0.11.0                     # Groq API — free LLM для исправления ошибок Whisper
 
 # ─── URL / Video Download ─────────────────────────────────────────────────────
-yt-dlp==2024.11.18               # Скачивает аудио с YouTube, TikTok, Instagram и 1000+ сайтов
+yt-dlp>=2024.11.18               # Скачивает аудио с YouTube, TikTok, Instagram и 1000+ сайтов
