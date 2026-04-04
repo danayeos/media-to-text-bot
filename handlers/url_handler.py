@@ -63,10 +63,9 @@ async def handle_url(update, context):
 
     # Настройки yt-dlp
     ydl_opts = {
-        # Сначала пробуем аудио без видео (быстрее, меньше трафика),
-        # если недоступно — берём любой формат и ffmpeg извлечёт аудио
-        "format": "bestaudio/best",
-        "format_sort": ["abr", "asr"],  # приоритет по качеству аудио
+        # "b" = best available format (всегда найдёт что-то)
+        # ffmpeg постпроцессор сам извлечёт аудио из любого формата
+        "format": "b",
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
@@ -149,11 +148,11 @@ async def handle_url(update, context):
                 reason = "Это видео требует входа в аккаунт."
         elif "copyright" in low:
             reason = "Заблокировано по авторским правам."
-        elif "not available in your country" in low or "not available in your region" in low:
+        elif "not available in your country" in low or "uploader has not made" in low:
             reason = (
-                "Это видео заблокировано для страны сервера (США/Европа).\n\n"
-                "Попробуй другое видео без гео-блокировки, "
-                "или скачай видео вручную и отправь файлом."
+                "Это видео доступно только в определённых странах, "
+                "но сервер бота находится в другом регионе.\n\n"
+                "Скачай видео вручную и отправь как файл — обработаю его."
             )
         elif "not available" in low or "unavailable" in low:
             reason = "Видео удалено или недоступно."
