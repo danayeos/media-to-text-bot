@@ -14,3 +14,6 @@ python-dotenv==1.0.0             # Load variables from .env file
 
 # ─── Translation (Bonus Feature) ─────────────────────────────────────────────
 deep-translator==1.11.4          # Free Google Translate (no API key)
+
+# ─── AI Text Correction ───────────────────────────────────────────────────────
+groq==0.11.0                     # Groq API — free LLM для исправления ошибок Whisper

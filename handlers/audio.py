@@ -80,6 +80,12 @@ async def process_audio(file_path: str, language: str | None, status_msg, source
 
         result = transcribe_audio(file_path, language=language)
 
+        # ── AI коррекция ошибок Whisper ───────────────────────────────────
+        from ai_corrector import correct_transcription, is_available
+        if is_available() and result["text"]:
+            await status_msg.edit_text("🤖 ИИ исправляет текст...", reply_markup=None)
+            result["text"] = correct_transcription(result["text"], result["language"])
+
         if not result["text"]:
             await status_msg.edit_text(
                 "⚠️ Речь не обнаружена.\n\n"
