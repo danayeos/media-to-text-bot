@@ -326,6 +326,10 @@ def main():
     os.makedirs(config.TEMP_DIR, exist_ok=True)
     logger.info(f"Temp directory: {os.path.abspath(config.TEMP_DIR)}")
 
+    # ── Load cookies for TikTok/Instagram ────────────────────────────────
+    from utils.cookies import init_cookies
+    init_cookies()
+
     # ── Load Whisper model once at startup ────────────────────────────────
     # This takes 10-60 seconds. We do it here so users don't wait on first message.
     logger.info(f"Loading Whisper model '{config.WHISPER_MODEL}'...")

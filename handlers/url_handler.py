@@ -17,6 +17,7 @@ import yt_dlp
 
 import config
 from handlers.audio import LANGUAGE_KEYBOARD, process_audio
+from utils.cookies import get_cookies_file
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,11 @@ async def handle_url(update, context):
             "Referer": "https://www.tiktok.com/",
         },
     }
+
+    # Добавить куки если есть (нужно для TikTok и Instagram)
+    cookies_file = get_cookies_file()
+    if cookies_file:
+        ydl_opts["cookiefile"] = cookies_file
 
     try:
         await status_msg.edit_text("⏳ Скачиваю аудио со ссылки...")
