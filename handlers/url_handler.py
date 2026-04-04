@@ -56,15 +56,6 @@ async def handle_url(update, context):
     if not url:
         return
 
-    # Instagram блокирует серверные IP по rate-limit — предупредить заранее
-    if "instagram.com" in url.lower():
-        await message.reply_text(
-            "⚠️ Instagram Reels не поддерживается.\n\n"
-            "Instagram блокирует серверы по IP. "
-            "Скачай видео вручную и отправь как файл — обработаю его."
-        )
-        return
-
     status_msg = await message.reply_text("🔗 Получаю информацию о видео...")
 
     # Уникальное имя файла чтобы несколько пользователей не конфликтовали
@@ -72,7 +63,9 @@ async def handle_url(update, context):
 
     # Настройки yt-dlp
     ydl_opts = {
-        "format": "bestaudio/ba/b/best",
+        # Скачать лучшее доступное аудио, несколько вариантов на случай
+        # если конкретный формат недоступен для данного видео
+        "format": "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
@@ -82,16 +75,6 @@ async def handle_url(update, context):
         "quiet": True,
         "no_warnings": True,
         "max_filesize": 100 * 1024 * 1024,
-
-        # Использовать Android/iOS клиент для YouTube — работает без авторизации.
-        # YouTube не блокирует мобильные клиенты так агрессивно как веб.
-        "extractor_args": {
-            "youtube": {
-                # android_vr и ios дают доступ к большинству публичных видео без куки
-                "player_client": ["android_vr", "ios", "web"],
-            },
-        },
-
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
