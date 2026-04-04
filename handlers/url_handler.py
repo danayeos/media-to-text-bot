@@ -63,9 +63,10 @@ async def handle_url(update, context):
 
     # Настройки yt-dlp
     ydl_opts = {
-        # Скачать лучшее доступное аудио, несколько вариантов на случай
-        # если конкретный формат недоступен для данного видео
-        "format": "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
+        # Сначала пробуем аудио без видео (быстрее, меньше трафика),
+        # если недоступно — берём любой формат и ffmpeg извлечёт аудио
+        "format": "bestaudio/best",
+        "format_sort": ["abr", "asr"],  # приоритет по качеству аудио
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
