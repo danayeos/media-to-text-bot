@@ -228,12 +228,28 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =============================================================================
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Respond when user sends plain text (we don't process text)."""
+    """
+    Обработать текстовое сообщение.
+    Если это ссылка — передать в url_handler.
+    Если просто текст — попросить отправить файл.
+    """
+    from handlers.url_handler import handle_url, extract_url
+
+    text = update.message.text or ""
+
+    # Проверяем — есть ли ссылка в сообщении
+    if extract_url(text):
+        await handle_url(update, context)
+        return
+
+    # Обычный текст — объяснить что бот умеет
     await update.message.reply_text(
-        "ℹ️ I only process media files.\n\n"
-        "Please send me an *audio*, *video*, or *image* file.\n"
-        "Use /help for instructions.",
-        parse_mode="Markdown",
+        "ℹ️ Отправьте мне файл или ссылку:\n\n"
+        "🎵 Аудио файл / голосовое сообщение\n"
+        "🎬 Видео файл\n"
+        "🖼️ Фото с текстом\n"
+        "🔗 Ссылка на YouTube, TikTok, Instagram...\n\n"
+        "Используй /help для подробностей."
     )
 
 
