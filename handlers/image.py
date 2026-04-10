@@ -57,10 +57,23 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        # ── Step 5: Translate to Russian ──────────────────────────────
+        translated_text = None
+        try:
+            from translator import translate_text
+            await status_msg.edit_text("🌐 Перевожу на русский...")
+            translated_text = translate_text(text, source_lang="auto", target_lang="ru")
+        except Exception as e:
+            logger.warning(f"Translation failed: {e}")
+
         # Send the header with Markdown, then the raw OCR text WITHOUT parse_mode.
         # OCR text can contain *, _, `, [ etc. which break Telegram's Markdown parser.
-        await status_msg.edit_text("🖼️ Extracted Text:")
+        await status_msg.edit_text("🖼️ Распознанный текст:")
         await _send_long_message(status_msg, message, text)
+
+        if translated_text:
+            await message.reply_text("🇷🇺 Перевод на русский:")
+            await _send_long_message(status_msg, message, translated_text)
 
     except Exception as e:
         logger.error(f"Image handler error: {e}", exc_info=True)

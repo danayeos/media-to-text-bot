@@ -107,22 +107,43 @@ async def process_audio(file_path: str, language: str | None, status_msg, source
 
 async def _send_result(status_msg, result: dict, source: str):
     """Send transcription result. Escapes Markdown to avoid parse errors."""
-    from translator import get_language_name
+    from translator import get_language_name, translate_text
 
     text = result["text"]
     lang_code = result.get("language", "?")
     confidence = result.get("confidence", 0)
     lang_name = get_language_name(lang_code)
 
+    # Translate to Russian if source language is not already Russian
+    translated_text = None
+    if lang_code != "ru":
+        try:
+            await status_msg.edit_text("🌐 Перевожу на русский...", reply_markup=None)
+            translated_text = translate_text(text, source_lang=lang_code, target_lang="ru")
+        except Exception as e:
+            logger.warning(f"Translation failed: {e}")
+
     # escape_markdown makes *, _, `, [ safe inside Markdown messages
     safe_text = escape_markdown(text, version=1)
 
-    response = (
-        f"{source} → *Транскрипция:*\n\n"
-        f"{safe_text}\n\n"
-        f"──────────────\n"
-        f"🌐 Язык: {lang_name} ({confidence:.0%})"
-    )
+    if translated_text:
+        safe_translated = escape_markdown(translated_text, version=1)
+        response = (
+            f"{source} → *Транскрипция ({lang_name}):*\n\n"
+            f"{safe_text}\n\n"
+            f"──────────────\n"
+            f"🇷🇺 *Перевод на русский:*\n\n"
+            f"{safe_translated}\n\n"
+            f"──────────────\n"
+            f"🌐 Язык оригинала: {lang_name} ({confidence:.0%})"
+        )
+    else:
+        response = (
+            f"{source} → *Транскрипция:*\n\n"
+            f"{safe_text}\n\n"
+            f"──────────────\n"
+            f"🌐 Язык: {lang_name} ({confidence:.0%})"
+        )
 
     if len(response) <= 4096:
         await status_msg.edit_text(response, parse_mode="Markdown", reply_markup=None)
@@ -133,10 +154,17 @@ async def _send_result(status_msg, result: dict, source: str):
             parse_mode="Markdown",
             reply_markup=None,
         )
-        # Send text in plain chunks (no parse_mode — safest for long unknown text)
+        # Send original text in plain chunks
         remaining = text
         while remaining:
             await status_msg.reply_text(remaining[:4096])
             remaining = remaining[4096:]
+        # Send translation if available
+        if translated_text:
+            await status_msg.reply_text("🇷🇺 Перевод на русский:")
+            remaining = translated_text
+            while remaining:
+                await status_msg.reply_text(remaining[:4096])
+                remaining = remaining[4096:]
         # Footer
-        await status_msg.reply_text(f"🌐 Язык: {lang_name} ({confidence:.0%})")
+        await status_msg.reply_text(f"🌐 Язык оригинала: {lang_name} ({confidence:.0%})")
