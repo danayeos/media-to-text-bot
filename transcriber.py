@@ -1,115 +1,51 @@
-# =============================================================================
-# transcriber.py — Audio transcription using faster-whisper (runs locally, free)
-#
-# faster-whisper is a reimplementation of Whisper that:
-#   - Does NOT need PyTorch (much lighter install)
-#   - Is 4x faster than the original Whisper on CPU
-#   - Uses less RAM
-#   - Supports the same languages (Kazakh, Russian, English, etc.)
-# =============================================================================
-
 import logging
-from faster_whisper import WhisperModel
+import os
 
 logger = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Global model variable — we load the model ONCE when the bot starts,
-# not on every request. Loading takes 5-30 seconds, so we do it once.
-# ─────────────────────────────────────────────────────────────────────────────
-_model: WhisperModel | None = None
+_client = None
 
 
-def load_model(model_size: str = "base") -> WhisperModel:
-    """
-    Load the Whisper model into memory.
-    Call this once at bot startup.
+def load_model(model_size: str = "base"):
+    """No-op: Groq Whisper API needs no local model."""
+    logger.info("Using Groq Whisper API (whisper-large-v3-turbo) — no local model needed.")
+    return True
 
-    Args:
-        model_size: "tiny", "base", "small", "medium", or "large"
 
-    Returns:
-        The loaded WhisperModel instance
-    """
-    global _model
-
-    if _model is not None:
-        logger.info("Whisper model already loaded, reusing.")
-        return _model
-
-    logger.info(f"Loading Whisper model '{model_size}'... (this may take 30 seconds)")
-
-    # device="cpu"         → run on CPU (works everywhere, no GPU required)
-    # compute_type="int8"  → use 8-bit integers (faster + less RAM than float32)
-    _model = WhisperModel(model_size, device="cpu", compute_type="int8")
-
-    logger.info("Whisper model loaded successfully!")
-    return _model
+def _get_client():
+    global _client
+    if _client is None:
+        from groq import Groq
+        api_key = os.getenv("GROQ_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("GROQ_API_KEY is not set. Get a free key at console.groq.com")
+        _client = Groq(api_key=api_key)
+    return _client
 
 
 def transcribe_audio(audio_path: str, language: str | None = None) -> dict:
     """
-    Transcribe an audio file to text.
-
-    Args:
-        audio_path: Full path to the audio file (WAV, MP3, OGG, etc.)
-        language:   Language code to force, e.g. "ru", "en", "kk"
-                    Pass None to let Whisper auto-detect the language.
-
-    Returns:
-        A dict with two keys:
-          - "text"     : The transcribed text (string)
-          - "language" : The detected language code (e.g. "ru", "en")
+    Transcribe audio via Groq Whisper API (free, no RAM needed).
+    Requires GROQ_API_KEY env variable.
     """
-    if _model is None:
-        raise RuntimeError(
-            "Whisper model is not loaded! Call load_model() before transcribing."
-        )
+    client = _get_client()
 
-    logger.info(f"Transcribing: {audio_path} | language={language or 'auto'}")
+    logger.info(f"Transcribing via Groq: {audio_path} | language={language or 'auto'}")
 
-    # transcribe() returns:
-    #   segments → iterable of text chunks (with timestamps)
-    #   info     → metadata including detected language
-    try:
-        segments, info = _model.transcribe(
-            audio_path,
-            language=language,          # None = auto-detect per segment
-            beam_size=5,                # Higher = more accurate, slower
-            vad_filter=True,            # Skip silent parts (Voice Activity Detection)
-            vad_parameters=dict(
-                min_silence_duration_ms=500  # Ignore silences < 0.5 second
-            ),
-            word_timestamps=False,
-        )
-        segment_list = list(segments)
+    kwargs = {"model": "whisper-large-v3-turbo", "response_format": "verbose_json"}
+    if language:
+        kwargs["language"] = language
 
-    except ValueError:
-        # "max() arg is an empty sequence" — VAD удалил все сегменты (тишина/шум).
-        # Повторяем без VAD фильтра чтобы всё же попробовать распознать.
-        logger.warning("VAD filter removed all segments, retrying without VAD...")
-        segments, info = _model.transcribe(
-            audio_path,
-            language=language,
-            beam_size=5,
-            vad_filter=False,  # отключаем VAD
-            word_timestamps=False,
-        )
-        segment_list = list(segments)
+    with open(audio_path, "rb") as f:
+        response = client.audio.transcriptions.create(file=f, **kwargs)
 
-    # Join all text chunks into one string.
-    full_text = " ".join(seg.text.strip() for seg in segment_list)
+    text = response.text.strip()
+    detected_lang = getattr(response, "language", language or "unknown")
 
-    detected_lang = info.language  # e.g. "ru", "en", "kk"
-
-    logger.info(
-        f"Transcription done. Language: {detected_lang} | "
-        f"Confidence: {info.language_probability:.0%} | "
-        f"Length: {len(full_text)} chars"
-    )
+    logger.info(f"Transcription done. Language: {detected_lang} | Length: {len(text)} chars")
 
     return {
-        "text": full_text.strip(),
+        "text": text,
         "language": detected_lang,
-        "confidence": round(info.language_probability, 2),
+        "confidence": 1.0,
     }
